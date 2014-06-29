@@ -1,15 +1,11 @@
 /**
- * CVN SimpleOverlay for Wiki
- * https://meta.wikimedia.org/wiki/User:Krinkle/Scripts/CVNSimpleOverlay
- *
- * @revision 2014-05-07
+ * CVN Overlay
+ * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
  * @license http://krinkle.mit-license.org/
  * @author Timo Tijhof, 2010–2014
- * @track [[File:Krinkle_CVNSimpleOverlay_wiki.js]]
  */
-/*jshint browser:true, undef:true, unused:true, multistr:true, white:true */
-/*global jQuery, mediaWiki, alert */
+/*global alert */
 (function ($, mw) {
 	'use strict';
 
@@ -17,11 +13,10 @@
 	 * Configuration
 	 */
 	var
-		cvnApi = '//cvn.wmflabs.org/api.php',
-		supportSVG = document.createElementNS && document.createElementNS('http://www.w3.org/2000/svg', 'svg').createSVGRect,
-		cvnLogo = supportSVG ?
-			'//upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg' :
-			'//upload.wikimedia.org/wikipedia/commons/thumb/c/c2/CVN_logo.svg/13px-CVN_logo.svg.png',
+		msg,
+		cvnApiUrl = '//cvn.wmflabs.org/api.php',
+		intuitionLoadUrl = '//tools.wmflabs.org/intuition/load.php?env=mw',
+		cvnLogo = '//upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
 		cvnLastUpdate = '',
 		blacklistIcon = '//upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
 		fullpagename = false,
@@ -34,14 +29,9 @@
 	 * Tool Functions
 	 */
 
-	// Get interface message
-	function msg(key) {
-		return window.krMsgs[key] || $.ucFirst(key);
-	}
-
 	// Construct a URL to a page on the wiki
 	function wikiLink(s, targetserver) {
-		return (targetserver || '') + mw.util.wikiGetlink(s);
+		return (targetserver || '') + mw.util.getUrl(s);
 	}
 
 	function parseWikiLink(input) {
@@ -82,13 +72,12 @@
 		return startSplit.join('');
 	}
 
+	/**
+	 * App Main Functions
+	 * -------------------------------------------------
+	 */
 
-/**
- * App Main Functions
- * -------------------------------------------------
- */
-
-	function cvnSO_doUserSpecBox(data) {
+	function doUserSpecBox(data) {
 		var html, comment, commentHtml, d;
 
 		comment = data.comment;
@@ -100,9 +89,9 @@
 		}
 
 		if (data.type) {
-			html = 'On <span class="cvn-so-list cvn-so-list-' + data.type + '">' + data.type + '</span>';
+			html = 'On <span class="cvn-overlay-list cvn-overlay-list-' + data.type + '">' + data.type + '</span>';
 		} else {
-			html = '<span class="cvn-so-list cvn-so-list-unlisted">Unlisted</span>';
+			html = '<span class="cvn-overlay-list cvn-overlay-list-unlisted">Unlisted</span>';
 		}
 
 		if (data.adder) {
@@ -119,16 +108,16 @@
 			html += ': <em title="' + mw.html.escape(comment) + '">' + commentHtml + '</em>';
 		}
 
-		$('#cvnSO_UserSpecBox, .firstHeading .cvn-so-userbox').remove();
+		$('.cvn-overlay-userbox').remove();
 		$('#firstHeading').before(
-			'<div class="toccolours cvn-so-userbox">' +
-				'<a class="cvn-so-logo" title="Counter-Vandalism Network"></a>' +
+			'<div class="toccolours cvn-overlay-userbox">' +
+				'<a class="cvn-overlay-logo" title="Counter-Vandalism Network"></a>' +
 				html +
 				'</div>'
 		);
 	}
 
-	function cvnSO_doOverlayUsers(users) {
+	function doOverlayUsers(users) {
 		$.each(users, function (name, user) {
 			var tooltip, d;
 			if (user.type === 'blacklist') {
@@ -137,13 +126,13 @@
 				if (user.comment) {
 					tooltip += msg('reason') + ': ' + user.comment + '. ';
 				} else {
-					tooltip += msg('noreasonfound');
+					tooltip += msg('reason-empty');
 				}
 
 				if (user.adder) {
 					tooltip += msg('adder') + ': ' + user.adder + '. ';
 				} else {
-					tooltip += msg('adder') + ': ' + msg('unknown');
+					tooltip += msg('adder') + ': ' + msg('adder-empty');
 				}
 
 				// Get expiry date
@@ -152,7 +141,7 @@
 					d.setTime(user.expiry * 1000);
 					tooltip += msg('expiry') + ': ' + d.toUTCString();
 				} else {
-					tooltip += msg('expiry') + ': ' + msg('unknown');
+					tooltip += msg('expiry') + ': ' + msg('adder-empty');
 				}
 
 				// Spit it out
@@ -160,8 +149,8 @@
 					.filter(function () {
 						return $(this).text() === name;
 					})
-					.not('.cvn-so-list-blacklist')
-					.addClass('cvn-so-list-blacklist')
+					.not('.cvn-overlay-list-blacklist')
+					.addClass('cvn-overlay-list-blacklist')
 					.prepend('<img src="' + blacklistIcon + '" alt="" title="' + mw.html.escape(tooltip) + '"/>')
 					.attr('title', tooltip);
 			}
@@ -170,7 +159,7 @@
 			// and we haven't done this already, trigger the UserSpecBox
 			if (isUserSpec && name === userSpec && userSpecDone === false) {
 				userSpecDone = true;
-				cvnSO_doUserSpecBox(user);
+				doUserSpecBox(user);
 			}
 		});
 
@@ -178,23 +167,23 @@
 		// and we haven't done this already, it means the user
 		// is unlisted in the base. Trigger it now
 		if (isUserSpec && userSpecDone === false) {
-			cvnSO_doUserSpecBox(false);
+			doUserSpecBox(false);
 		}
 	}
 
-	function cvnSO_doOverlayPage(page) {
+	function doOverlayPage(page) {
 		var text, $krContentSub;
 
 		if (page.comment) {
 			text = msg('reason') + ': ' + parseWikiLink(mw.html.escape(page.comment)) + '. ';
 		} else {
-			text = msg('noreasonfound');
+			text = msg('reason-empty');
 		}
 
 		if (page.adder) {
 			text += msg('adder') + ': ' + page.adder;
 		} else {
-			text += msg('adder') + ': ' + msg('unknown');
+			text += msg('adder') + ': ' + msg('adder-empty');
 		}
 
 		$krContentSub = $('#contentSub');
@@ -203,18 +192,19 @@
 		}
 
 		$krContentSub
-		.find('.cvn-so-pagesub').remove().end()
-		.append('<span class="cvn-so-pagesub"><span class="cvn-so-logo" title="Counter-Vandalism Network"></span>' +
-			msg('globalwatched') +
-			'. ' +
-			text +
-			'</span>'
-		);
+			.find('.cvn-overlay-pagesub').remove()
+				.end()
+			.append('<span class="cvn-overlay-pagesub"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span>' +
+				mw.html.escape(msg('globalwatched')) +
+				'. ' +
+				mw.html.escape(text) +
+				'</span>'
+			);
 	}
 
-	function cvnSO_checkAPI(users) {
+	function checkAPI(users) {
 		$.ajax({
-			url: cvnApi,
+			url: cvnApiUrl,
 			data: {
 				users: users.join('|'),
 				pages: fullpagename || ''
@@ -225,17 +215,17 @@
 			var d;
 
 			if (data.users) {
-				cvnSO_doOverlayUsers(data.users);
+				doOverlayUsers(data.users);
 			}
 
 			if (data.pages && data.pages[fullpagename]) {
-				cvnSO_doOverlayPage(data.pages[fullpagename]);
+				doOverlayPage(data.pages[fullpagename]);
 			}
 
 			if (data.lastUpdate) {
 				d = new Date();
 				d.setTime(data.lastUpdate * 1000);
-				cvnLastUpdate = 'DB ' + msg('lastupdate') + ': ' + d.toUTCString();
+				cvnLastUpdate = msg('dblastupdate') + ': ' + d.toUTCString();
 			}
 		});
 	}
@@ -269,17 +259,17 @@
 		return false;
 	}
 
-	function init() {
+	function execute() {
 		var usernamesOnPage = [],
-			$pt = $('<li id="pt-cvnso" class="pt-cvnso" title="CVN Database information"><a href="//meta.wikimedia.org/wiki/CVN" title="m:CVN">CVN</a></li>');
+			$pt = $('<li id="pt-cvnoverlay" class="pt-cvnoverlay" title="CVN Database information"><a href="//meta.wikimedia.org/wiki/CVN" title="m:CVN">CVN</a></li>');
 		mw.util.addCSS('\
-			.pt-cvnso {\
+			.pt-cvnoverlay {\
 				background: url(' + cvnLogo + ') no-repeat 0 0;\
 				background-size: 13px;\
 				padding-left: 15px;\
 			}\
-			.pt-cvnso:hover { cursor: pointer; }\
-			.cvn-so-userbox {\
+			.pt-cvnoverlay:hover { cursor: pointer; }\
+			.cvn-overlay-userbox {\
 				margin: 0;\
 				padding: 0 3px;\
 				float: right;\
@@ -287,7 +277,7 @@
 				line-height: 1.4;\
 				text-align: left;\
 			}\
-			.cvn-so-logo {\
+			.cvn-overlay-logo {\
 				display: inline-block;\
 				vertical-align: middle;\
 				background: url(' + cvnLogo + ') no-repeat 0 50%;\
@@ -296,21 +286,21 @@
 				height: 13px;\
 				margin-right: 3px;\
 			}\
-			.cvn-so-list-blacklist,\
-			.mw-userlink.cvn-so-list-blacklist { color: red; }\
-			.mw-userlink.cvn-so-list-blacklist img { vertical-align: bottom; }\
-			.cvn-so-list-whitelist { color: teal; }\
-			.cvn-so-list-unknown,\
-			.cvn-so-list-unlisted { color: grey; }'
+			.cvn-overlay-list-blacklist,\
+			.mw-userlink.cvn-overlay-list-blacklist { color: red; }\
+			.mw-userlink.cvn-overlay-list-blacklist img { vertical-align: bottom; }\
+			.cvn-overlay-list-whitelist { color: teal; }\
+			.cvn-overlay-list-unknown,\
+			.cvn-overlay-list-unlisted { color: grey; }'
 		);
 
 		$('#p-personal')
-			.find('.pt-cvnso').remove().end()
+			.find('.pt-cvnoverlay').remove().end()
 			.find('ul').eq(0).prepend($pt[0]);
 
 		$pt
 		.on('click', function () {
-			alert('CVN SimpleOverlay\n\n' + cvnLastUpdate);
+			alert('CVN Overlay\n\n' + cvnLastUpdate);
 		})
 		.find('a').on('click', function (e) {
 			e.stopPropagation();
@@ -348,34 +338,32 @@
 
 		// Only load if we have usernames and/or are on an editable/watchable/non-special page
 		if (usernamesOnPage.length || fullpagename) {
-			cvnSO_checkAPI(usernamesOnPage);
+			checkAPI(usernamesOnPage);
 		}
 	}
 
-	/**
-	 * Fire it off when the DOM is ready...
-	 */
-	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)
-	mw.loader.using(['mediawiki.util', 'jquery.mwExtension'], function () {
-
-		if (
-			(mw.config.get('wgAction') !== 'edit' || (mw.config.get('wgAction') === 'edit' && mw.util.getParamValue('redlink') === '1')) &&
-				mw.config.get('wgAction') !== 'submit'
-		) {
-			$(document).ready(function () {
-				// Make sure messages are loaded and init the tool
-				if (!window.krMsgs) {
-					$.ajax({
-						url: '//toolserver.org/~krinkle/I18N/export.php?lang=' +  mw.config.get('wgUserLanguage'),
-						type: 'GET',
-						dataType: 'script',
-						cache: true
-					}).done(init);
-				} else {
-					init();
-				}
-			});
+	function init() {
+		if (!mw.libs.getIntuition) {
+			mw.libs.getIntuition = $.ajax({ url: intuitionLoadUrl, dataType: 'script', cache: true });
 		}
-	});
+
+		var i18nLoad = mw.libs.getIntuition
+			.then(function () {
+				return mw.libs.intuition.load('cvnoverlay');
+			})
+			.done(function () {
+				msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
+			});
+
+		$.when(mw.loader.using(['mediawiki.util', 'jquery.mwExtension']), i18nLoad, $.ready).done(execute);
+	}
+
+	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)
+	if (
+		(mw.config.get('wgAction') !== 'edit' || mw.util.getParamValue('redlink') === '1') &&
+			mw.config.get('wgAction') !== 'submit'
+	) {
+		init();
+	}
 
 }(jQuery, mediaWiki));

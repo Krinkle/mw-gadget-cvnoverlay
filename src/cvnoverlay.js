@@ -3,9 +3,8 @@
  * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
  * @license http://krinkle.mit-license.org/
- * @author Timo Tijhof, 2010–2014
+ * @author Timo Tijhof, 2010–2015
  */
-/*global alert */
 (function ($, mw) {
 	'use strict';
 
@@ -17,7 +16,6 @@
 		cvnApiUrl = '//cvn.wmflabs.org/api.php',
 		intuitionLoadUrl = '//tools.wmflabs.org/intuition/load.php?env=mw',
 		cvnLogo = '//upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
-		cvnLastUpdate = '',
 		blacklistIcon = '//upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
 		fullpagename = false,
 		userSpec = false,
@@ -212,20 +210,12 @@
 			dataType: 'jsonp',
 			cache: true
 		}).done(function (data) {
-			var d;
-
 			if (data.users) {
 				doOverlayUsers(data.users);
 			}
 
 			if (data.pages && data.pages[fullpagename]) {
 				doOverlayPage(data.pages[fullpagename]);
-			}
-
-			if (data.lastUpdate) {
-				d = new Date();
-				d.setTime(data.lastUpdate * 1000);
-				cvnLastUpdate = msg('dblastupdate') + ': ' + d.toUTCString();
 			}
 		});
 	}
@@ -260,15 +250,8 @@
 	}
 
 	function execute() {
-		var usernamesOnPage = [],
-			$pt = $('<li id="pt-cvnoverlay" class="pt-cvnoverlay" title="CVN Database information"><a href="//meta.wikimedia.org/wiki/CVN" title="m:CVN">CVN</a></li>');
+		var usernamesOnPage = [];
 		mw.util.addCSS('\
-			.pt-cvnoverlay {\
-				background: url(' + cvnLogo + ') no-repeat 0 0;\
-				background-size: 13px;\
-				padding-left: 15px;\
-			}\
-			.pt-cvnoverlay:hover { cursor: pointer; }\
 			.cvn-overlay-userbox {\
 				margin: 0;\
 				padding: 0 3px;\
@@ -293,18 +276,6 @@
 			.cvn-overlay-list-unknown,\
 			.cvn-overlay-list-unlisted { color: grey; }'
 		);
-
-		$('#p-personal')
-			.find('.pt-cvnoverlay').remove().end()
-			.find('ul').eq(0).prepend($pt[0]);
-
-		$pt
-		.on('click', function () {
-			alert('CVN Overlay\n\n' + cvnLastUpdate);
-		})
-		.find('a').on('click', function (e) {
-			e.stopPropagation();
-		});
 
 		$('.mw-userlink').each(function () {
 			var username = $(this).text();

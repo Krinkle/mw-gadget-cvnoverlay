@@ -207,7 +207,7 @@
 				users: users.join('|'),
 				pages: fullpagename || ''
 			},
-			dataType: 'jsonp',
+			dataType: $.support.cors ? 'json' : 'jsonp',
 			cache: true
 		}).done(function (data) {
 			if (data.users) {

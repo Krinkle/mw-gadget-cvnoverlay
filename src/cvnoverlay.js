@@ -18,9 +18,7 @@
 		cvnLogo = '//upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
 		blacklistIcon = '//upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
 		fullpagename = false,
-		userSpec = false,
-		isUserSpec = false,
-		userSpecDone = false,
+		userSpecCache = null,
 		canonicalSpecialPageName = mw.config.get('wgCanonicalSpecialPageName');
 
 	/**
@@ -116,6 +114,8 @@
 	}
 
 	function doOverlayUsers(users) {
+		var userSpec = getUserSpec(),
+			userSpecDone = false;
 		$.each(users, function (name, user) {
 			var tooltip, d;
 			if (user.type === 'blacklist') {
@@ -155,17 +155,16 @@
 			// If the current page is about one specific user,
 			// and we have data about that user in 'userdata',
 			// and we haven't done this already, trigger the UserSpecBox
-			if (isUserSpec && name === userSpec && userSpecDone === false) {
+			if (name === userSpec && !userSpecDone) {
 				userSpecDone = true;
 				doUserSpecBox(user);
 			}
 		});
 
-		// If the current page is about one specific user,
-		// and we haven't done this already, it means the user
-		// is unlisted in the base. Trigger it now
-		if (isUserSpec && userSpecDone === false) {
-			doUserSpecBox(false);
+		// If the current page is about one specific user, and we haven't seen that user
+		// in the loop, render a generic user box instead.
+		if (userSpec && !userSpecDone) {
+			doUserSpecBox({});
 		}
 	}
 
@@ -212,33 +211,31 @@
 		});
 	}
 
-	function getIsUserSpec() {
+	function getUserSpec() {
 		var val;
-		if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
-			userSpec = mw.config.get('wgTitle');
-			return true;
+		if (userSpecCache === null) {
+			userSpecCache = false;
+			if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
+				userSpecCache = mw.config.get('wgTitle');
+			} else if (canonicalSpecialPageName === 'Contributions') {
+				val = $.trim($('#bodyContent .mw-contributions-form input[name="target"]').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			} else if (canonicalSpecialPageName === 'Log') {
+				val = $.trim($('#mw-log-user').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			} else if (canonicalSpecialPageName === 'Blockip') {
+				val = $.trim($('#mw-bi-target').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			}
 		}
 
-		val = $('#bodyContent .mw-contributions-form input[name="target"]').val();
-		if (canonicalSpecialPageName === 'Contributions' && !$.isEmpty(val)) {
-			userSpec = val;
-			return true;
-		}
-
-		val = $('#mw-log-user').val();
-		if (canonicalSpecialPageName === 'Log' && !$.isEmpty(val)) {
-			userSpec = val;
-			return true;
-		}
-
-		val = $('#mw-bi-target').val();
-		if (canonicalSpecialPageName === 'Blockip' && !$.isEmpty(val)) {
-			userSpec = val;
-			return true;
-		}
-
-		userSpecDone = true;
-		return false;
+		return userSpecCache;
 	}
 
 	function execute() {
@@ -298,11 +295,10 @@
 			fullpagename += mw.config.get('wgTitle');
 		}
 
-		// If the current page is about one specific user, add it to the array
-		// This could cause it to be in the array twice, but the API takes filters out duplicates (array_unique) before querying.
-		isUserSpec = getIsUserSpec();
-		if (isUserSpec) {
-			usernamesOnPage.push(userSpec);
+		// If the current page is about one specific user, add it to the array.
+		// This could cause it to be in the array twice, but the API takes filters duplicates.
+		if (getUserSpec()) {
+			usernamesOnPage.push(getUserSpec());
 		}
 
 		// Only load if we have usernames and/or are on an editable/watchable/non-special page
@@ -324,7 +320,7 @@
 				msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
 			});
 
-		$.when(mw.loader.using(['mediawiki.util', 'jquery.mwExtension', 'jquery.tipsy']), i18nLoad, $.ready).done(execute);
+		$.when(mw.loader.using(['mediawiki.util', 'jquery.tipsy']), i18nLoad, $.ready).done(execute);
 	}
 
 	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)

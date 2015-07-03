@@ -170,7 +170,7 @@
 	}
 
 	function doOverlayPage(page) {
-		var text, $krContentSub;
+		var text, parent = document.getElementById('left-navigation') || document.getElementById('contentSub');
 
 		if (page.comment) {
 			text = msg('reason') + ': ' + parseWikiLink(mw.html.escape(page.comment)) + '. ';
@@ -184,20 +184,12 @@
 			text += msg('adder') + ': ' + msg('adder-empty');
 		}
 
-		$krContentSub = $('#contentSub');
-		if ($krContentSub.html() !== '' && $krContentSub.text() !== ' ') {
-			$krContentSub.append(' &middot; ');
-		}
-
-		$krContentSub
-			.find('.cvn-overlay-pagesub').remove()
+		if (parent) {
+			$(parent)
+				.find('.cvn-overlay-pagesub').remove()
 				.end()
-			.append('<span class="cvn-overlay-pagesub"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span>' +
-				mw.html.escape(msg('globalwatched')) +
-				'. ' +
-				mw.html.escape(text) +
-				'</span>'
-			);
+				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>').tipsy());
+		}
 	}
 
 	function checkAPI(users) {
@@ -252,6 +244,12 @@
 	function execute() {
 		var usernamesOnPage = [];
 		mw.util.addCSS('\
+			.cvn-overlay-pagesub {\
+				float: left;\
+				padding: 1.25em 0.5em 0 0.5em;\
+				display: block;\
+				font-size: 0.8em;\
+			}\
 			.cvn-overlay-userbox {\
 				margin: 0;\
 				padding: 0 3px;\
@@ -326,7 +324,7 @@
 				msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
 			});
 
-		$.when(mw.loader.using(['mediawiki.util', 'jquery.mwExtension']), i18nLoad, $.ready).done(execute);
+		$.when(mw.loader.using(['mediawiki.util', 'jquery.mwExtension', 'jquery.tipsy']), i18nLoad, $.ready).done(execute);
 	}
 
 	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)

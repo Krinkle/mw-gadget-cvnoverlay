@@ -2,8 +2,8 @@
  * CVN Overlay
  * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
- * @license http://krinkle.mit-license.org/
- * @author Timo Tijhof, 2010–2015
+ * @license https://krinkle.mit-license.org/
+ * @author Timo Tijhof, 2010–2016
  */
 (function ($, mw) {
 	'use strict';
@@ -113,6 +113,33 @@
 		);
 	}
 
+	function getUserSpec() {
+		var val;
+		if (userSpecCache === null) {
+			userSpecCache = false;
+			if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
+				userSpecCache = mw.config.get('wgTitle');
+			} else if (canonicalSpecialPageName === 'Contributions') {
+				val = $.trim($('#bodyContent .mw-contributions-form input[name="target"]').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			} else if (canonicalSpecialPageName === 'Log') {
+				val = $.trim($('#mw-log-user').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			} else if (canonicalSpecialPageName === 'Blockip') {
+				val = $.trim($('#mw-bi-target').val());
+				if (val) {
+					userSpecCache = val;
+				}
+			}
+		}
+
+		return userSpecCache;
+	}
+
 	function doOverlayUsers(users) {
 		var userSpec = getUserSpec(),
 			userSpecDone = false;
@@ -209,33 +236,6 @@
 				doOverlayPage(data.pages[fullpagename]);
 			}
 		});
-	}
-
-	function getUserSpec() {
-		var val;
-		if (userSpecCache === null) {
-			userSpecCache = false;
-			if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
-				userSpecCache = mw.config.get('wgTitle');
-			} else if (canonicalSpecialPageName === 'Contributions') {
-				val = $.trim($('#bodyContent .mw-contributions-form input[name="target"]').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			} else if (canonicalSpecialPageName === 'Log') {
-				val = $.trim($('#mw-log-user').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			} else if (canonicalSpecialPageName === 'Blockip') {
-				val = $.trim($('#mw-bi-target').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			}
-		}
-
-		return userSpecCache;
 	}
 
 	function execute() {

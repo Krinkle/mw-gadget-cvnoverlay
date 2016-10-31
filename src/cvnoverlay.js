@@ -214,7 +214,7 @@
 			$(parent)
 				.find('.cvn-overlay-pagesub').remove()
 				.end()
-				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>').tipsy());
+				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>'));
 		}
 	}
 
@@ -246,6 +246,16 @@
 				padding: 1.25em 0.5em 0 0.5em;\
 				display: block;\
 				font-size: 0.8em;\
+			}\
+			.cvn-overlay-pagesub:hover::after {\
+				display: block;\
+				content: attr(title);\
+				background: #fff;\
+				color: #252525;\
+				border: 1px solid #a7d7f9;\
+				border-radius: 4px;\
+				padding: 5px 8px;\
+				max-width: 20em;\
 			}\
 			.cvn-overlay-userbox {\
 				margin: 0;\
@@ -320,7 +330,7 @@
 				msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
 			});
 
-		$.when(mw.loader.using(['mediawiki.util', 'jquery.tipsy']), i18nLoad, $.ready).done(execute);
+		$.when(mw.loader.using(['mediawiki.util']), i18nLoad, $.ready).done(execute);
 	}
 
 	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)

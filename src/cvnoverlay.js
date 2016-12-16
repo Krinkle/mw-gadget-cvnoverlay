@@ -333,10 +333,8 @@
 		$.when(mw.loader.using(['mediawiki.util']), i18nLoad, $.ready).done(execute);
 	}
 
-	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)
-	if (
-		mw.config.get('wgAction') !== 'edit' && mw.config.get('wgAction') !== 'submit'
-	) {
+	// Don't load at all in edit mode unless the page doesn't exist yet (like a User-page)
+	if ( mw.config.get('wgAction') !== 'edit' && mw.config.get('wgAction') !== 'submit' ) {
 		init();
 	}
 

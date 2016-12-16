@@ -335,8 +335,7 @@
 
 	// Dont load at all in edit mode unless the page doesn't exist yet (like a User-page)
 	if (
-		(mw.config.get('wgAction') !== 'edit' || mw.util.getParamValue('redlink') === '1') &&
-			mw.config.get('wgAction') !== 'submit'
+		mw.config.get('wgAction') !== 'edit' && mw.config.get('wgAction') !== 'submit'
 	) {
 		init();
 	}

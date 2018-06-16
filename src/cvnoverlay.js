@@ -3,7 +3,7 @@
  * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
  * @license https://krinkle.mit-license.org/
- * @author Timo Tijhof, 2010–2016
+ * @author Timo Tijhof, 2010–2017
  */
 (function ($, mw) {
 	'use strict';
@@ -107,7 +107,7 @@
 		$('.cvn-overlay-userbox').remove();
 		$('#firstHeading').before(
 			'<div class="toccolours cvn-overlay-userbox">' +
-				'<a class="cvn-overlay-logo" title="Counter-Vandalism Network"></a>' +
+				'<span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span>' +
 				html +
 				'</div>'
 		);
@@ -214,7 +214,7 @@
 			$(parent)
 				.find('.cvn-overlay-pagesub').remove()
 				.end()
-				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>'));
+				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>'));
 		}
 	}
 

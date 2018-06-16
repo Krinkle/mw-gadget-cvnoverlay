@@ -2,8 +2,8 @@
  * CVN Overlay
  * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
- * @license https://krinkle.mit-license.org/
- * @author Timo Tijhof, 2010–2017
+ * @license https://krinkle.mit-license.org/@2018
+ * @author Timo Tijhof, 2010–2018
  */
 (function ($, mw) {
 	'use strict';
@@ -13,10 +13,10 @@
 	 */
 	var
 		msg,
-		cvnApiUrl = '//cvn.wmflabs.org/api.php',
-		intuitionLoadUrl = '//tools.wmflabs.org/intuition/load.php?env=mw',
-		cvnLogo = '//upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
-		blacklistIcon = '//upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
+		cvnApiUrl = 'https://cvn.wmflabs.org/api.php',
+		intuitionLoadUrl = 'https://meta.wikimedia.org/w/index.php?title=User:Krinkle/Scripts/Intuition.js&action=raw&ctype=text/javascript',
+		cvnLogo = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
+		blacklistIcon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
 		fullpagename = false,
 		userSpecCache = null,
 		canonicalSpecialPageName = mw.config.get('wgCanonicalSpecialPageName');

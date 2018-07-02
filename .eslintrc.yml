@@ -1,0 +1,13 @@
+extends: semistandard
+parserOptions:
+  ecmaVersion: 5
+env:
+  es6: false
+  node: false
+  browser: true
+globals:
+  $: false
+  mw: false
+rules:
+  one-var: 0
+  no-multi-str: 0

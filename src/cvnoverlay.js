@@ -5,350 +5,346 @@
  * @license https://krinkle.mit-license.org/@2018
  * @author Timo Tijhof, 2010–2018
  */
-(function ($, mw) {
-	'use strict';
+(function () {
+  'use strict';
 
-	/**
-	 * Configuration
-	 */
-	var
-		msg,
-		cvnApiUrl = 'https://cvn.wmflabs.org/api.php',
-		intuitionLoadUrl = 'https://meta.wikimedia.org/w/index.php?title=User:Krinkle/Scripts/Intuition.js&action=raw&ctype=text/javascript',
-		cvnLogo = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
-		blacklistIcon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
-		fullpagename = false,
-		userSpecCache = null,
-		canonicalSpecialPageName = mw.config.get('wgCanonicalSpecialPageName');
+  /**
+   * Configuration
+   */
+  var
+    msg,
+    cvnApiUrl = 'https://cvn.wmflabs.org/api.php',
+    intuitionLoadUrl = 'https://meta.wikimedia.org/w/index.php?title=User:Krinkle/Scripts/Intuition.js&action=raw&ctype=text/javascript',
+    cvnLogo = 'https://upload.wikimedia.org/wikipedia/commons/c/c2/CVN_logo.svg',
+    blacklistIcon = 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Nuvola_apps_important.svg/18px-Nuvola_apps_important.svg.png',
+    fullpagename = false,
+    userSpecCache = null,
+    canonicalSpecialPageName = mw.config.get('wgCanonicalSpecialPageName');
 
-	/**
-	 * Tool Functions
-	 */
+  /**
+   * Tool Functions
+   */
 
-	// Construct a URL to a page on the wiki
-	function wikiLink(s, targetserver) {
-		return (targetserver || '') + mw.util.getUrl(s);
-	}
+  // Construct a URL to a page on the wiki
+  function wikiLink (s, targetserver) {
+    return (targetserver || '') + mw.util.getUrl(s);
+  }
 
-	function parseWikiLink(input) {
-		var targetserver, parts, startSplit, linkContent, linkSplit, linkTarget, linkText;
+  function parseWikiLink (input) {
+    var targetserver, parts, startSplit, linkContent, linkSplit, linkTarget, linkText;
 
-		targetserver = ''; // relative to current;
-		if (input.indexOf('Autoblacklist: ') === 0) {
-			parts = input.split(' ');
-			if (parts[parts.length - 2] === 'on' || parts[parts.length - 2] === 'at') {
-				targetserver = '//' + parts[parts.length - 1] + '.org';
-			}
-		}
+    targetserver = ''; // relative to current;
+    if (input.indexOf('Autoblacklist: ') === 0) {
+      parts = input.split(' ');
+      if (parts[parts.length - 2] === 'on' || parts[parts.length - 2] === 'at') {
+        targetserver = '//' + parts[parts.length - 1] + '.org';
+      }
+    }
 
-		startSplit = input.split('[[');
-		$.each(startSplit, function (i, val) {
+    startSplit = input.split('[[');
+    $.each(startSplit, function (i, val) {
+      linkContent = val.split(']]');
 
-			linkContent = val.split(']]');
+      if (linkContent[1] !== undefined) {
+        linkSplit = linkContent[0].split('|');
+        if (linkSplit[1]) {
+          linkTarget = linkSplit[0];
+          linkText = linkSplit[1];
+        } else {
+          linkTarget = linkSplit[0];
+          linkText = linkSplit[0];
+        }
+        startSplit[i] = '<a href="' + wikiLink(linkTarget, targetserver) + '" title="' + linkTarget + '">' + linkText + '</a>' + linkContent[1];
+      } else {
+        if (i !== 0) {
+          val = ']]' + val;
+        }
+        startSplit[i] = val;
+      }
+    });
+    return startSplit.join('');
+  }
 
-			if (linkContent[1] !== undefined) {
+  /**
+   * App Main Functions
+   * -------------------------------------------------
+   */
 
-				linkSplit = linkContent[0].split('|');
-				if (linkSplit[1]) {
-					linkTarget = linkSplit[0];
-					linkText = linkSplit[1];
-				} else {
-					linkTarget = linkSplit[0];
-					linkText = linkSplit[0];
-				}
-				startSplit[i] = '<a href="' + wikiLink(linkTarget, targetserver) + '" title="' + linkTarget + '">' + linkText + '</a>' + linkContent[1];
+  function doUserSpecBox (data) {
+    var html, comment, commentHtml, d;
 
-			} else {
-				if (i !== 0) {
-					val = ']]' + val;
-				}
-				startSplit[i] = val;
-			}
-		});
-		return startSplit.join('');
-	}
+    comment = data.comment;
+    if (comment) {
+      commentHtml = parseWikiLink(mw.html.escape(comment));
+      if ($('<div>').html(commentHtml).text().length > 33) {
+        commentHtml = '<span style="cursor: help;">' + parseWikiLink(mw.html.escape(comment.slice(0, 30))) + '<abbr>...</abbr>' + '</span>';
+      }
+    }
 
-	/**
-	 * App Main Functions
-	 * -------------------------------------------------
-	 */
+    if (data.type) {
+      html = 'On <span class="cvn-overlay-list cvn-overlay-list-' + data.type + '">' + data.type + '</span>';
+    } else {
+      html = '<span class="cvn-overlay-list cvn-overlay-list-unlisted">Unlisted</span>';
+    }
 
-	function doUserSpecBox(data) {
-		var html, comment, commentHtml, d;
+    if (data.adder) {
+      html += ' added by <span style="white-space: nowrap;">' + mw.html.escape(data.adder) + '</span>';
+    }
 
-		comment = data.comment;
-		if (comment) {
-			commentHtml = parseWikiLink(mw.html.escape(comment));
-			if ($('<div>').html(commentHtml).text().length > 33) {
-				commentHtml = '<span style="cursor: help;">' + parseWikiLink(mw.html.escape(comment.slice(0, 30))) + '<abbr>...</abbr>' + '</span>';
-			}
-		}
+    if (data.expiry) {
+      d = new Date();
+      d.setTime(data.expiry * 1000);
+      html += ' <abbr style="vertical-align: super; font-size: smaller; color: purple;" title="until ' + mw.html.escape(d.toUTCString()) + '">(expiry)</abbr>';
+    }
 
-		if (data.type) {
-			html = 'On <span class="cvn-overlay-list cvn-overlay-list-' + data.type + '">' + data.type + '</span>';
-		} else {
-			html = '<span class="cvn-overlay-list cvn-overlay-list-unlisted">Unlisted</span>';
-		}
+    if (commentHtml) {
+      html += ': <em title="' + mw.html.escape(comment) + '">' + commentHtml + '</em>';
+    }
 
-		if (data.adder) {
-			html += ' added by <span style="white-space: nowrap;">' + mw.html.escape(data.adder) + '</span>';
-		}
+    $('.cvn-overlay-userbox').remove();
+    $('#firstHeading').before(
+      '<div class="toccolours cvn-overlay-userbox">' +
+        '<span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span>' +
+        html +
+        '</div>'
+    );
+  }
 
-		if (data.expiry) {
-			d = new Date();
-			d.setTime(data.expiry * 1000);
-			html += ' <abbr style="vertical-align: super; font-size: smaller; color: purple;" title="until ' + mw.html.escape(d.toUTCString()) + '">(expiry)</abbr>';
-		}
+  function getUserSpec () {
+    var val;
+    if (userSpecCache === null) {
+      userSpecCache = false;
+      if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
+        userSpecCache = mw.config.get('wgTitle');
+      } else if (canonicalSpecialPageName === 'Contributions') {
+        val = $.trim($('#bodyContent .mw-contributions-form input[name="target"]').val());
+        if (val) {
+          userSpecCache = val;
+        }
+      } else if (canonicalSpecialPageName === 'Log') {
+        val = $.trim($('#mw-log-user').val());
+        if (val) {
+          userSpecCache = val;
+        }
+      } else if (canonicalSpecialPageName === 'Blockip') {
+        val = $.trim($('#mw-bi-target').val());
+        if (val) {
+          userSpecCache = val;
+        }
+      }
+    }
 
-		if (commentHtml) {
-			html += ': <em title="' + mw.html.escape(comment) + '">' + commentHtml + '</em>';
-		}
+    return userSpecCache;
+  }
 
-		$('.cvn-overlay-userbox').remove();
-		$('#firstHeading').before(
-			'<div class="toccolours cvn-overlay-userbox">' +
-				'<span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span>' +
-				html +
-				'</div>'
-		);
-	}
+  function doOverlayUsers (users) {
+    var userSpec = getUserSpec(),
+      userSpecDone = false;
+    $.each(users, function (name, user) {
+      var tooltip, d;
+      if (user.type === 'blacklist') {
+        tooltip = '';
 
-	function getUserSpec() {
-		var val;
-		if (userSpecCache === null) {
-			userSpecCache = false;
-			if (mw.config.get('wgTitle').indexOf('/') === -1 && $.inArray(mw.config.get('wgNamespaceNumber'), [2, 3]) !== -1) {
-				userSpecCache = mw.config.get('wgTitle');
-			} else if (canonicalSpecialPageName === 'Contributions') {
-				val = $.trim($('#bodyContent .mw-contributions-form input[name="target"]').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			} else if (canonicalSpecialPageName === 'Log') {
-				val = $.trim($('#mw-log-user').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			} else if (canonicalSpecialPageName === 'Blockip') {
-				val = $.trim($('#mw-bi-target').val());
-				if (val) {
-					userSpecCache = val;
-				}
-			}
-		}
+        if (user.comment) {
+          tooltip += msg('reason') + ': ' + user.comment + '. ';
+        } else {
+          tooltip += msg('reason-empty');
+        }
 
-		return userSpecCache;
-	}
+        if (user.adder) {
+          tooltip += msg('adder') + ': ' + user.adder + '. ';
+        } else {
+          tooltip += msg('adder') + ': ' + msg('adder-empty');
+        }
 
-	function doOverlayUsers(users) {
-		var userSpec = getUserSpec(),
-			userSpecDone = false;
-		$.each(users, function (name, user) {
-			var tooltip, d;
-			if (user.type === 'blacklist') {
-				tooltip = '';
+        // Get expiry date
+        if (user.expiry) {
+          d = new Date();
+          d.setTime(user.expiry * 1000);
+          tooltip += msg('expiry') + ': ' + d.toUTCString();
+        } else {
+          tooltip += msg('expiry') + ': ' + msg('adder-empty');
+        }
 
-				if (user.comment) {
-					tooltip += msg('reason') + ': ' + user.comment + '. ';
-				} else {
-					tooltip += msg('reason-empty');
-				}
+        // Spit it out
+        $('.mw-userlink')
+          .filter(function () {
+            return $(this).text() === name;
+          })
+          .not('.cvn-overlay-list-blacklist')
+          .addClass('cvn-overlay-list-blacklist')
+          .prepend('<img src="' + blacklistIcon + '" alt="" title="' + mw.html.escape(tooltip) + '"/>')
+          .attr('title', tooltip);
+      }
+      // If the current page is about one specific user,
+      // and we have data about that user in 'userdata',
+      // and we haven't done this already, trigger the UserSpecBox
+      if (name === userSpec && !userSpecDone) {
+        userSpecDone = true;
+        doUserSpecBox(user);
+      }
+    });
 
-				if (user.adder) {
-					tooltip += msg('adder') + ': ' + user.adder + '. ';
-				} else {
-					tooltip += msg('adder') + ': ' + msg('adder-empty');
-				}
+    // If the current page is about one specific user, and we haven't seen that user
+    // in the loop, render a generic user box instead.
+    if (userSpec && !userSpecDone) {
+      doUserSpecBox({});
+    }
+  }
 
-				// Get expiry date
-				if (user.expiry) {
-					d = new Date();
-					d.setTime(user.expiry * 1000);
-					tooltip += msg('expiry') + ': ' + d.toUTCString();
-				} else {
-					tooltip += msg('expiry') + ': ' + msg('adder-empty');
-				}
+  function doOverlayPage (page) {
+    var text, $node, parent;
 
-				// Spit it out
-				$('.mw-userlink')
-					.filter(function () {
-						return $(this).text() === name;
-					})
-					.not('.cvn-overlay-list-blacklist')
-					.addClass('cvn-overlay-list-blacklist')
-					.prepend('<img src="' + blacklistIcon + '" alt="" title="' + mw.html.escape(tooltip) + '"/>')
-					.attr('title', tooltip);
-			}
-			// If the current page is about one specific user,
-			// and we have data about that user in 'userdata',
-			// and we haven't done this already, trigger the UserSpecBox
-			if (name === userSpec && !userSpecDone) {
-				userSpecDone = true;
-				doUserSpecBox(user);
-			}
-		});
+    if (page.comment) {
+      text = msg('reason') + ': ' + parseWikiLink(mw.html.escape(page.comment)) + '. ';
+    } else {
+      text = msg('reason-empty');
+    }
 
-		// If the current page is about one specific user, and we haven't seen that user
-		// in the loop, render a generic user box instead.
-		if (userSpec && !userSpecDone) {
-			doUserSpecBox({});
-		}
-	}
+    if (page.adder) {
+      text += msg('adder') + ': ' + page.adder;
+    } else {
+      text += msg('adder') + ': ' + msg('adder-empty');
+    }
 
-	function doOverlayPage(page) {
-		var text, $node, parent;
+    $node = $('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>');
 
-		if (page.comment) {
-			text = msg('reason') + ': ' + parseWikiLink(mw.html.escape(page.comment)) + '. ';
-		} else {
-			text = msg('reason-empty');
-		}
+    parent = document.getElementById('left-navigation');
+    if (parent) {
+      // Vector skin
+      $node.addClass('cvn-overlay-pagesub--portlet');
+    } else {
+      // Other skins (including MonoBook)
+      parent = document.getElementById('contentSub');
+    }
 
-		if (page.adder) {
-			text += msg('adder') + ': ' + page.adder;
-		} else {
-			text += msg('adder') + ': ' + msg('adder-empty');
-		}
+    $(parent)
+      .find('.cvn-overlay-pagesub')
+      .remove()
+      .end()
+      .append($node);
+  }
 
-		$node = $('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>');
+  function checkAPI (users) {
+    $.ajax({
+      url: cvnApiUrl,
+      data: {
+        users: users.join('|'),
+        pages: fullpagename || ''
+      },
+      dataType: $.support.cors ? 'json' : 'jsonp',
+      cache: true
+    }).done(function (data) {
+      if (data.users) {
+        doOverlayUsers(data.users);
+      }
 
-		parent = document.getElementById('left-navigation');
-		if (parent) {
-			// Vector skin
-			$node.addClass('cvn-overlay-pagesub--portlet');
-		} else {
-			// Other skins (including MonoBook)
-			parent = document.getElementById('contentSub');
-		}
+      if (data.pages && data.pages[fullpagename]) {
+        doOverlayPage(data.pages[fullpagename]);
+      }
+    });
+  }
 
-		$(parent)
-			.find('.cvn-overlay-pagesub')
-				.remove()
-				.end()
-			.append($node);
-	}
+  function execute () {
+    var usernamesOnPage = [];
+    mw.util.addCSS('\
+      .cvn-overlay-pagesub {\
+        padding: 0 0.5em;\
+      }\
+      .cvn-overlay-pagesub--portlet {\
+        display: block;\
+        float: left;\
+        padding: 1.25em 0.5em 0 0.5em;\
+        font-size: 0.8em;\
+      }\
+      .cvn-overlay-pagesub:hover::after {\
+        display: block;\
+        content: attr(title);\
+        background: #fff;\
+        color: #252525;\
+        border: 1px solid #a7d7f9;\
+        border-radius: 4px;\
+        padding: 5px 8px;\
+        max-width: 20em;\
+      }\
+      .cvn-overlay-userbox {\
+        margin: 0;\
+        padding: 0 3px;\
+        float: right;\
+        font-size: 13px;\
+        line-height: 1.4;\
+        text-align: left;\
+      }\
+      .cvn-overlay-logo {\
+        display: inline-block;\
+        vertical-align: middle;\
+        background: url(' + cvnLogo + ') no-repeat 0 50%;\
+        background-size: 13px;\
+        width: 13px;\
+        height: 13px;\
+        margin-right: 3px;\
+      }\
+      .cvn-overlay-list-blacklist,\
+      .mw-userlink.cvn-overlay-list-blacklist { color: red; }\
+      .mw-userlink.cvn-overlay-list-blacklist img { vertical-align: bottom; }\
+      .cvn-overlay-list-whitelist { color: teal; }\
+      .cvn-overlay-list-unknown,\
+      .cvn-overlay-list-unlisted { color: grey; }'
+    );
 
-	function checkAPI(users) {
-		$.ajax({
-			url: cvnApiUrl,
-			data: {
-				users: users.join('|'),
-				pages: fullpagename || ''
-			},
-			dataType: $.support.cors ? 'json' : 'jsonp',
-			cache: true
-		}).done(function (data) {
-			if (data.users) {
-				doOverlayUsers(data.users);
-			}
+    $('.mw-userlink').each(function () {
+      var username = $(this).text();
+      if ($.inArray(username, usernamesOnPage) === -1) {
+        usernamesOnPage.push(username);
+      }
+    });
 
-			if (data.pages && data.pages[fullpagename]) {
-				doOverlayPage(data.pages[fullpagename]);
-			}
-		});
-	}
+    if (mw.config.get('wgNamespaceNumber') >= 0) {
+      if (mw.config.get('wgNamespaceNumber') === 0) {
+        fullpagename = '';
+      } else {
+        // We need fullpagename but unescaped (wgPageName is escaped like Main_Page)
+        // wgTitle is unescaped but without namespace so we rebuild from namespace and wgTitle
+        // if namespace is not main, then prefix namespace and colon. Otherwise no prefix.
+        fullpagename = mw.config.get('wgCanonicalNamespace') + ':';
+        if (fullpagename === 'File:') {
+          // CVN uses Image: instead of File:
+          fullpagename = 'Image:';
+        }
+      }
+      fullpagename += mw.config.get('wgTitle');
+    }
 
-	function execute() {
-		var usernamesOnPage = [];
-		mw.util.addCSS('\
-			.cvn-overlay-pagesub {\
-				padding: 0 0.5em;\
-			}\
-			.cvn-overlay-pagesub--portlet {\
-				display: block;\
-				float: left;\
-				padding: 1.25em 0.5em 0 0.5em;\
-				font-size: 0.8em;\
-			}\
-			.cvn-overlay-pagesub:hover::after {\
-				display: block;\
-				content: attr(title);\
-				background: #fff;\
-				color: #252525;\
-				border: 1px solid #a7d7f9;\
-				border-radius: 4px;\
-				padding: 5px 8px;\
-				max-width: 20em;\
-			}\
-			.cvn-overlay-userbox {\
-				margin: 0;\
-				padding: 0 3px;\
-				float: right;\
-				font-size: 13px;\
-				line-height: 1.4;\
-				text-align: left;\
-			}\
-			.cvn-overlay-logo {\
-				display: inline-block;\
-				vertical-align: middle;\
-				background: url(' + cvnLogo + ') no-repeat 0 50%;\
-				background-size: 13px;\
-				width: 13px;\
-				height: 13px;\
-				margin-right: 3px;\
-			}\
-			.cvn-overlay-list-blacklist,\
-			.mw-userlink.cvn-overlay-list-blacklist { color: red; }\
-			.mw-userlink.cvn-overlay-list-blacklist img { vertical-align: bottom; }\
-			.cvn-overlay-list-whitelist { color: teal; }\
-			.cvn-overlay-list-unknown,\
-			.cvn-overlay-list-unlisted { color: grey; }'
-		);
+    // If the current page is about one specific user, add it to the array.
+    // This could cause it to be in the array twice, but the API takes filters duplicates.
+    if (getUserSpec()) {
+      usernamesOnPage.push(getUserSpec());
+    }
 
-		$('.mw-userlink').each(function () {
-			var username = $(this).text();
-			if ($.inArray(username, usernamesOnPage) === -1) {
-				usernamesOnPage.push(username);
-			}
-		});
+    // Only load if we have usernames and/or are on an editable/watchable/non-special page
+    if (usernamesOnPage.length || fullpagename) {
+      checkAPI(usernamesOnPage);
+    }
+  }
 
-		if (mw.config.get('wgNamespaceNumber') >= 0) {
-			if (mw.config.get('wgNamespaceNumber') === 0) {
-				fullpagename = '';
-			} else {
-				// We need fullpagename but unescaped (wgPageName is escaped like Main_Page)
-				// wgTitle is unescaped but without namespace so we rebuild from namespace and wgTitle
-				// if namespace is not main, then prefix namespace and colon. Otherwise no prefix.
-				fullpagename = mw.config.get('wgCanonicalNamespace') + ':';
-				if (fullpagename === 'File:') {
-					// CVN uses Image: instead of File:
-					fullpagename = 'Image:';
-				}
-			}
-			fullpagename += mw.config.get('wgTitle');
-		}
+  function init () {
+    if (!mw.libs.getIntuition) {
+      mw.libs.getIntuition = $.ajax({ url: intuitionLoadUrl, dataType: 'script', cache: true });
+    }
 
-		// If the current page is about one specific user, add it to the array.
-		// This could cause it to be in the array twice, but the API takes filters duplicates.
-		if (getUserSpec()) {
-			usernamesOnPage.push(getUserSpec());
-		}
+    var i18nLoad = mw.libs.getIntuition
+      .then(function () {
+        return mw.libs.intuition.load('cvnoverlay');
+      })
+      .done(function () {
+        msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
+      });
 
-		// Only load if we have usernames and/or are on an editable/watchable/non-special page
-		if (usernamesOnPage.length || fullpagename) {
-			checkAPI(usernamesOnPage);
-		}
-	}
+    $.when(mw.loader.using(['mediawiki.util']), i18nLoad, $.ready).done(execute);
+  }
 
-	function init() {
-		if (!mw.libs.getIntuition) {
-			mw.libs.getIntuition = $.ajax({ url: intuitionLoadUrl, dataType: 'script', cache: true });
-		}
-
-		var i18nLoad = mw.libs.getIntuition
-			.then(function () {
-				return mw.libs.intuition.load('cvnoverlay');
-			})
-			.done(function () {
-				msg = $.proxy(mw.libs.intuition.msg, null, 'cvnoverlay');
-			});
-
-		$.when(mw.loader.using(['mediawiki.util']), i18nLoad, $.ready).done(execute);
-	}
-
-	// Don't load at all in edit mode unless the page doesn't exist yet (like a User-page)
-	if (mw.config.get('wgAction') !== 'edit' && mw.config.get('wgAction') !== 'submit') {
-		init();
-	}
-
-}(jQuery, mediaWiki));
+  // Don't load at all in edit mode unless the page doesn't exist yet (like a User-page)
+  if (mw.config.get('wgAction') !== 'edit' && mw.config.get('wgAction') !== 'submit') {
+    init();
+  }
+}());

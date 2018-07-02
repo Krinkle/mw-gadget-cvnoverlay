@@ -196,7 +196,7 @@
 	}
 
 	function doOverlayPage(page) {
-		var text, parent = document.getElementById('left-navigation') || document.getElementById('contentSub');
+		var text, $node, parent;
 
 		if (page.comment) {
 			text = msg('reason') + ': ' + parseWikiLink(mw.html.escape(page.comment)) + '. ';
@@ -210,12 +210,22 @@
 			text += msg('adder') + ': ' + msg('adder-empty');
 		}
 
+		$node = $('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>');
+
+		parent = document.getElementById('left-navigation');
 		if (parent) {
-			$(parent)
-				.find('.cvn-overlay-pagesub').remove()
-				.end()
-				.append($('<span class="cvn-overlay-pagesub" title="' + mw.html.escape(text) + '"><span class="cvn-overlay-logo" title="Counter-Vandalism Network"></span> CVN: ' + mw.html.escape(msg('globalwatched')) + '</span>'));
+			// Vector skin
+			$node.addClass('cvn-overlay-pagesub--portlet');
+		} else {
+			// Other skins (including MonoBook)
+			parent = document.getElementById('contentSub');
 		}
+
+		$(parent)
+			.find('.cvn-overlay-pagesub')
+				.remove()
+				.end()
+			.append($node);
 	}
 
 	function checkAPI(users) {
@@ -242,9 +252,12 @@
 		var usernamesOnPage = [];
 		mw.util.addCSS('\
 			.cvn-overlay-pagesub {\
+				padding: 0 0.5em;\
+			}\
+			.cvn-overlay-pagesub--portlet {\
+				display: block;\
 				float: left;\
 				padding: 1.25em 0.5em 0 0.5em;\
-				display: block;\
 				font-size: 0.8em;\
 			}\
 			.cvn-overlay-pagesub:hover::after {\

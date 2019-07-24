@@ -1,9 +1,10 @@
 /**
  * CVN Overlay
- * https://github.com/countervandalism/mw-gadget-cvnoverlay
  *
- * @license https://krinkle.mit-license.org/@2018
- * @author Timo Tijhof, 2010–2018
+ * From <https://github.com/countervandalism/mw-gadget-cvnoverlay>.
+ *
+ * @license https://krinkle.mit-license.org/2010-2019/
+ * @author Timo Tijhof
  */
 (function () {
   'use strict';

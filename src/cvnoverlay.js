@@ -229,11 +229,12 @@
   function checkAPI (users) {
     $.ajax({
       url: cvnApiUrl,
+      method: 'POST',
       data: {
         users: users.join('|'),
         pages: fullpagename || ''
       },
-      dataType: $.support.cors ? 'json' : 'jsonp',
+      dataType: 'json',
       cache: true
     }).done(function (data) {
       if (data.users) {

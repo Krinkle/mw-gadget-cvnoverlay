@@ -1,1 +1,1 @@
-# CVN Overlay [![Build Status](https://api.travis-ci.org/countervandalism/mw-gadget-cvnoverlay.svg?branch=master)](https://travis-ci.org/countervandalism/mw-gadget-cvnoverlay)
+# CVN Overlay [![Build Status](https://travis-ci.com/countervandalism/mw-gadget-cvnoverlay.svg?branch=master)](https://travis-ci.com/countervandalism/mw-gadget-cvnoverlay)

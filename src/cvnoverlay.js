@@ -260,6 +260,7 @@
         font-size: 0.8em;\
       }\
       .cvn-overlay-pagesub:hover::after {\
+        position: absolute;\
         display: block;\
         content: attr(title);\
         background: #fff;\

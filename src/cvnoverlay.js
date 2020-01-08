@@ -3,15 +3,11 @@
  *
  * From <https://github.com/countervandalism/mw-gadget-cvnoverlay>.
  *
- * @license https://krinkle.mit-license.org/2010-2019/
  * @author Timo Tijhof
+ * @license https://krinkle.mit-license.org/2010-2020/
  */
 (function () {
   'use strict';
-
-  /**
-   * Configuration
-   */
   var
     msg,
     cvnApiUrl = 'https://cvn.wmflabs.org/api.php',
@@ -22,64 +18,46 @@
     userSpecCache = null,
     canonicalSpecialPageName = mw.config.get('wgCanonicalSpecialPageName');
 
-  /**
-   * Tool Functions
-   */
-
   // Construct a URL to a page on the wiki
   function wikiLink (s, targetserver) {
-    return (targetserver || '') + mw.util.getUrl(s);
+    return targetserver + mw.util.getUrl(s);
   }
 
   function parseWikiLink (input) {
-    var targetserver, parts, startSplit, linkContent, linkSplit, linkTarget, linkText;
+    var targetserver, parts;
 
     targetserver = ''; // relative to current;
     if (input.indexOf('Autoblacklist: ') === 0) {
       parts = input.split(' ');
       if (parts[parts.length - 2] === 'on' || parts[parts.length - 2] === 'at') {
-        targetserver = '//' + parts[parts.length - 1] + '.org';
+        targetserver = 'https://' + parts[parts.length - 1] + '.org';
       }
     }
 
-    startSplit = input.split('[[');
-    $.each(startSplit, function (i, val) {
-      linkContent = val.split(']]');
-
-      if (linkContent[1] !== undefined) {
-        linkSplit = linkContent[0].split('|');
-        if (linkSplit[1]) {
-          linkTarget = linkSplit[0];
-          linkText = linkSplit[1];
-        } else {
-          linkTarget = linkSplit[0];
-          linkText = linkSplit[0];
-        }
-        startSplit[i] = '<a href="' + wikiLink(linkTarget, targetserver) + '" title="' + linkTarget + '">' + linkText + '</a>' + linkContent[1];
-      } else {
-        if (i !== 0) {
-          val = ']]' + val;
-        }
-        startSplit[i] = val;
-      }
+    return input.replace(/\[\[([^\]]+)\]\]/g, function (match, inner) {
+      var split, target, label;
+      split = inner.split('|');
+      target = split[0];
+      label = split[1] || split[0];
+      // TODO: This double-escapes
+      return mw.html.element('a', {
+        href: wikiLink(target, targetserver),
+        title: target
+      }, label);
     });
-    return startSplit.join('');
   }
-
-  /**
-   * App Main Functions
-   * -------------------------------------------------
-   */
 
   function doUserSpecBox (data) {
     var html, comment, commentHtml, d;
 
-    comment = data.comment;
-    if (comment) {
-      commentHtml = parseWikiLink(mw.html.escape(comment));
-      if ($('<div>').html(commentHtml).text().length > 33) {
-        commentHtml = '<span style="cursor: help;">' + parseWikiLink(mw.html.escape(comment.slice(0, 30))) + '<abbr>...</abbr>' + '</span>';
-      }
+    comment = data.comment || '';
+    if (comment.length > 70) {
+      commentHtml = mw.html.element('em',
+        { style: 'cursor: help;', title: comment },
+        new mw.html.Raw(mw.html.escape(comment.slice(0, 45)) + '...')
+      );
+    } else {
+      commentHtml = '<em>' + parseWikiLink(mw.html.escape(comment)) + '</em>';
     }
 
     if (data.type) {
@@ -99,7 +77,7 @@
     }
 
     if (commentHtml) {
-      html += ': <em title="' + mw.html.escape(comment) + '">' + commentHtml + '</em>';
+      html += ': ' + commentHtml;
     }
 
     $('.cvn-overlay-userbox').remove();

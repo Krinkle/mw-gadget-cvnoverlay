@@ -258,7 +258,6 @@
       }\
       .cvn-overlay-logo {\
         display: inline-block;\
-        vertical-align: middle;\
         background: url(' + cvnLogo + ') no-repeat 0 50%;\
         background-size: 13px;\
         width: 13px;\
